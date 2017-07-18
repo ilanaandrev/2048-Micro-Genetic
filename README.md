@@ -33,6 +33,7 @@ Highest Tile at Game Over | Random Movement | Ordered Movement
 256 | 10.85% | 48.98%
 512 | 0.06% | 7.74%
 **Average Score** | **1027** | **2169**
+
 Any network we train must convincingly beat these scores to be considered a success.
 
 
@@ -56,7 +57,7 @@ Besides those key differences, the rest of the algorithm is as expected.  Every 
 #### The Results ####
 I trained a population of networks for 2000 generations.  The following is a graph of the best net's average score at each generation:
 
-![Evolution of Scores](https://github.com/clambro/2048-Micro-Genetic/blob/master/misc/scores2000generations)
+![Evolution of Scores](https://github.com/clambro/2048-Micro-Genetic/blob/master/misc/scores2000generations.png)
 
 Before we discuss this image, let's also perform a more quantitative examination.  Taking the best network from the 2000th generation and playing 10,000 games with it gives the results in the table below, which I've compared to the baselines we established earlier:
 
