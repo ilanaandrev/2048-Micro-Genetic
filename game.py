@@ -26,6 +26,7 @@ class Game:
     last_move_illegal : bool
         Whether or not the last attempted move was illegal.
     """
+
     def __init__(self):
         """Sets up the board and clears the key-state."""
         self.board = np.zeros((4, 4), dtype=np.int)
@@ -90,7 +91,7 @@ class Game:
         """Slides tiles left one column at a time, but doesn't merge them."""
         for row in range(4):
             new_row = [i for i in self.board[row, :] if i != 0]
-            new_row = new_row + [0 for i in range(4-len(new_row))]
+            new_row = new_row + [0] * (4 - len(new_row))
             self.board[row, :] = np.array(new_row)
 
     def merge_left(self):

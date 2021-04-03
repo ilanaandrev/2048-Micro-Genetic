@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Jun  5 15:51:04 2017
-
-@author: Costa
-"""
-
 import game
 import numpy as np
 
@@ -17,39 +10,40 @@ class Net(object):
         2. Fully-connected hidden layer of 16 nodes.
         3. Output layer of 4 nodes corresponding to left, up, right, down keys.
 
-    Attributes:
-        score: A float. The net's score geometrically averaged over the games
-               it played.
-        generation: An integer. Used in the genetic algorithm to track age.
-        highest_tile: A float. The geometric mean of the highest tiles in all
-                      the games the net played.
-        chromosome: A 340x1 numpy array containing the weights for the
-                    matrices. (16 inputs; 1 hidden layer of size 16, plus bias.
-                    17x16 matrix then 17x4 = 340 elements)
+    Attributes
+    ----------
+    generation : int
+        Which generation the network belongs to.
+    score : float
+        The net's score geometrically averaged over the games it played.
+    highest_tile : float
+        The geometric mean of the highest tiles in all the games the net played.
+    chromosome : ndarray
+        A 340x1 numpy array containing the weights for the matrices. (16 inputs; 1 hidden layer of size 16, plus bias.
+        17x16 matrix then 17x4 = 340 elements)
     """
 
     def __init__(self, gen=0, mom=None, dad=None, chromosome=None):
-        """Inits the neural net.
+        """Builds the network from a chromosome if given, or two parents, falling back to random generation if neither.
 
-        If a chromosome is given, load that as the net's chromosome.  If
-        parents are given, use them to generate a child chromosome.  If nothing
-        is given, generate a random chromosome.
-
-        Args:
-            gen: An integer. The current generation.
-            mom: A net from which the chromosome will be sampled.
-            dad: The other net from which the chromosome will be sampled.
-            chromosome: A 340x1 numpy array containing the matrix weights.
+        Parameters
+        ----------
+        gen : int
+            The current generation.
+        mom : Optional[Net]
+            A net from which the chromosome will be sampled.
+        dad : Optional[Net]
+            The other net from which the chromosome will be sampled.
+        chromosome : Optional[ndarray]
+            A 340x1 numpy array containing the network weights.
         """
-        self.score = 0
         self.generation = gen
+        self.score = 0
         self.highest_tile = 0
         if chromosome:
             self.chromosome = chromosome
         elif not mom or not dad:
             self.chromosome = np.random.uniform(-0.4, 0.4, 340)
-        # Build chromosome by taking elements from mom and dad, biased 60/40
-        # towards higher-scoring parent. Then add random mutations.
         elif mom.score > dad.score:
             self.chromosome = np.array([
                     mom.chromosome[i] if np.random.random() > 0.4
@@ -68,36 +62,44 @@ class Net(object):
     def mutate(self):
         """Add random mutations to 2% of net's chromosome."""
         mutation = np.array([np.random.randn()/10 if np.random.random() < 0.02
-                             else 0 for i in range(len(self.chromosome))])
+                             else 0 for _ in range(len(self.chromosome))])
         self.chromosome += mutation
 
-    def relu(self, x):
+    @staticmethod
+    def relu(x):
         """Leaky ReLU"""
         return np.maximum(0.01*x, x)
 
     def make_move(self, board):
         """Input board into net and feed-forward to get a move direction.
 
-        Returns:
-            moves: A list of integers corresponding to movement directions,
-                   sorted according to the net's output.
+        Parameters
+        ----------
+        board : ndarray
+            The board state to calculate the move for.
+
+        Returns
+        -------
+        moves : ndarray
+            A list of integers corresponding to movement directions, sorted according to the net's output.
         """
-        # Normalize board.  Only relative tile magnitude matters.
-        x = board.reshape(16) / np.max(board)
-        x = np.append(1, board)  # Add bias
-        W_xh = self.chromosome[:272].reshape((17, 16))
-        W_hy = self.chromosome[272:].reshape((17, 4))
-        h = self.relu(x @ W_xh)
+        x = board.reshape(16) / np.max(board)  # Only relative tile magnitude matters.
+        x = np.append(1, x)  # Add bias
+        w_xh = self.chromosome[:272].reshape((17, 16))
+        w_hy = self.chromosome[272:].reshape((17, 4))
+        h = self.relu(x @ w_xh)
         h = np.append(1, h)  # Add bias
-        y = h @ W_hy  # No non-linearity needed. We only care about order.
+        y = h @ w_hy  # No non-linearity needed. We only care about order.
         moves = np.array([37, 38, 39, 40])  # [left, up, right, down]
         return moves[y.argsort()[::-1]]
 
     def learn_game(self, games):
-        """Net plays games and calculates average scores and highest tiles.
+        """Play games and calculate (geometric) average scores and highest tiles.
 
-        Args:
-            games: Integer. The number of games to average over.
+        Parameters
+        ----------
+        games: int
+            The number of games to average over.
         """
         self.score = 1
         self.highest_tile = 1
@@ -115,15 +117,16 @@ class Net(object):
                         g.last_move_illegal = False
                         g.board = board_copy
                         g.score = score_copy.tolist()
-            # Score and highest tile are geometric averages.
             self.score *= g.score**(1/games)
             self.highest_tile *= g.highest_tile**(1/games)
 
     def play_game(self, show=True):
-        """Net plays one game of 2048 with optional fancy graphics.
+        """Play one game of 2048 with optional graphics.
 
-        Args:
-            show: If True, Python will display an animated plot of the board.
+        Parameters
+        ----------
+        show : bool
+            If True, display an animated plot of the board.
         """
         g = game.Game()
         if show:
@@ -148,9 +151,17 @@ class Net(object):
     def get_stats(self, games=10000):
         """Play games and analyze the net's highest tiles and average score.
 
-        Returns:
-            scores: A list containing the score in each game
-            tiles: A list containing the highest tile in each game
+        Parameters
+        ----------
+        games : int
+            The number of games to play.
+
+        Returns
+        -------
+        scores : List[int]
+            The score in each game
+        tiles : List[int]
+            The highest tile in each game
         """
         dic = {}
         scores = []
@@ -177,9 +188,12 @@ class Net(object):
 def test_random():
     """Play one game for each of 10000 nets and get summary statistics.
 
-    Returns:
-        scores: A list containing the score in each game
-        tiles: A list containing the highest tile in each game
+    Returns
+    -------
+    scores : List[int]
+        The score in each game
+    tiles : List[int]
+        The highest tile in each game
     """
     dic = {}
     scores = []
