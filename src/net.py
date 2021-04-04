@@ -2,7 +2,7 @@ import game
 import numpy as np
 
 
-class Net(object):
+class Net:
     """A simple feed-forward neural net to play 2048.
 
     Layers:

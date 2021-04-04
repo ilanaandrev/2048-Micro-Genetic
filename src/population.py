@@ -5,7 +5,7 @@ from os import remove
 from os.path import isfile
 
 
-class Population(object):
+class Population:
     """A collection of nets.
 
     Attributes
@@ -129,7 +129,7 @@ def train_population(final_gen, initial_gen=0, elite=None):
     best_net : Net
         The trained net that performs best.
     """
-    parents = []
+    parents = None
     top_scores = []
 
     for gen in range(initial_gen+1, final_gen+1):
@@ -159,10 +159,9 @@ def train_population(final_gen, initial_gen=0, elite=None):
     print('Finding best...')
     best_net = find_best(pop)
 
-    fname = "BestNetGen" + str(final_gen)
-    np.save(fname, best_net)
+    filename = "BestNetGen" + str(final_gen)
+    np.save(filename, best_net)
 
-    print('\a')  # Make noise in Windows
     return top_scores, best_net
 
 
