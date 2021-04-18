@@ -2,8 +2,8 @@ from game.action import DIRECTIONS
 import numpy as np
 
 
-HIDDEN_LAYER_SIZE = 256
-NUM_HIDDEN_LAYERS = 2
+HIDDEN_LAYER_SIZE = 1024
+NUM_HIDDEN_LAYERS = 1
 assert NUM_HIDDEN_LAYERS > 0
 
 INPUT_WEIGHT_SHAPE = (16, HIDDEN_LAYER_SIZE)
@@ -37,25 +37,12 @@ class Genome:
         if None not in [mom, dad]:
             self.input_weights, self.hidden_weights, self.output_weights = self._spawn_child_chromosome(mom, dad)
         else:
-            self.input_weights = self._generate_random_weights(INPUT_WEIGHT_SHAPE)
-            self.hidden_weights = self._generate_random_weights(HIDDEN_WEIGHTS_SHAPE)
-            self.output_weights = self._generate_random_weights(OUTPUT_WEIGHT_SHAPE)
-
-    @staticmethod
-    def _generate_random_weights(shape):
-        """Generate random binary {-1, 1} weights of the given shape.
-
-        Parameters
-        ----------
-        shape : Tuple[int]
-            The shape of weights to generate.
-
-        Returns
-        -------
-        ndarray
-            The generated weights.
-        """
-        return 2 * np.random.randint(0, 2, shape) - 1
+            def generate_binary_weights(shape):
+                """Generate binary {-1, 1} weights of a given shape."""
+                return 2 * np.random.randint(0, 2, shape) - 1
+            self.input_weights = generate_binary_weights(INPUT_WEIGHT_SHAPE)
+            self.hidden_weights = generate_binary_weights(HIDDEN_WEIGHTS_SHAPE)
+            self.output_weights = generate_binary_weights(OUTPUT_WEIGHT_SHAPE)
 
     @staticmethod
     def _spawn_child_chromosome(mom, dad):
@@ -92,9 +79,10 @@ class Genome:
                                    for m, d in zip(mom.output_weights, dad.output_weights)])
 
         def mutate(array):
-            """Randomly flip 1% of the bits."""
-            mutation = np.array([-1 if np.random.random() < 0.01 else 1 for _ in range(array.size)])
-            return array * mutation.reshape(array.shape)
+            """Randomly flip or zero ~1% of the bits."""
+            mutation = np.array([np.random.choice([-1, 0, 1])
+                                 if np.random.random() < 0.01 else i for i in array.reshape(-1)])
+            return mutation.reshape(array.shape)
 
         return mutate(input_weights), mutate(hidden_weights), mutate(output_weights)
 
@@ -117,3 +105,20 @@ class Genome:
             h = np.sign(h @ w)
         y = h @ self.output_weights  # No non-linearity needed. We only care about order.
         return np.asarray(DIRECTIONS)[y.argsort()[::-1]]
+
+    def calculate_similarity(self, genome):
+        """Calculate the similarity (percent of equal weights) between this genome and another.
+
+        Parameters
+        ----------
+        genome : Genome
+            The genome to which this one will be compared.
+
+        Returns
+        -------
+        float
+            The percent similarity from 0 to 1.
+        """
+        w1 = np.hstack([w.reshape(-1) for w in (self.input_weights, self.hidden_weights, self.output_weights)])
+        w2 = np.hstack([w.reshape(-1) for w in (genome.input_weights, genome.hidden_weights, genome.output_weights)])
+        return np.mean(w1 == w2)

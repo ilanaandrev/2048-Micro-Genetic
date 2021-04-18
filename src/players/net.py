@@ -13,16 +13,16 @@ class NetworkPlayer(Player):
         The genome containing the weights for the network, along with rules for reproduction.
     """
 
-    def __init__(self, gen=0, mom=None, dad=None, genome=None):
+    def __init__(self, gen=1, mom=None, dad=None, genome=None):
         """Builds the network from a genome if given, or two parents, falling back to random generation if neither.
 
         Parameters
         ----------
         gen : int
             The current generation.
-        mom : Optional[Net]
+        mom : Optional[NetworkPlayer]
             A net from which the chromosome will be sampled.
-        dad : Optional[Net]
+        dad : Optional[NetworkPlayer]
             The other net from which the chromosome will be sampled.
         genome : Optional[ndarray]
             The genome containing the network weights.
@@ -35,6 +35,21 @@ class NetworkPlayer(Player):
             self.genome = Genome(mom.genome, dad.genome)
         else:
             self.genome = Genome()
+
+    def calculate_similarity(self, net):
+        """Calculate the similarity between this network's genome and another.
+
+        Parameters
+        ----------
+        net : NetworkPlayer
+            The network to which this one will be compared.
+
+        Returns
+        -------
+        float
+            The percent similarity from 0 to 1.
+        """
+        return self.genome.calculate_similarity(net.genome)
 
     def _choose_action(self, game):
         """Evaluate the position using the network and choose the best legal move it determines.

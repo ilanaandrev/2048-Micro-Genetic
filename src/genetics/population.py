@@ -1,6 +1,12 @@
-import matplotlib.pyplot as plt
+from copy import copy
+import pickle
 from players.net import NetworkPlayer
 import numpy as np
+from tqdm import tqdm
+
+
+NETS_PER_POP = 32
+NUM_ELITE = 1
 
 
 class Population:
@@ -10,144 +16,124 @@ class Population:
     ----------
     generation : int
         The current generation.
-    genepool : List[Net]
+    networks : List[NetworkPlayer]
         The networks in the population.
+    elites : List[NetworkPlayer]
+        Additional elite networks from a previous generation that may be treated differently.
+    similarity : float
+        The average similarity (overlapping weights) between all networks in the population.
     """
 
-    def __init__(self, gen, elite=None, parents=None):
-        """Builds the population by copying elites and creating children from the genepool or randomly generating them.
+    def __init__(self, pop=None):
+        """Builds the population by either reproducing from a previous one or randomly generating networks.
 
         Parameters
         ----------
-        gen :  int
-            The generation of new networks.
-        elite : Union[List[Net], str]
-            Networks that are copied directly to the population OR a file path to such a list.
-        parents : List[Net]
-            Networks from which the population will be spawned.
+        pop : Optional[Union[Population, str]]
+            The population from which to spawn this population, or a path leading to it. If None, the population will
+            be generated randomly.
         """
-        self.generation = gen
-
-        if isinstance(elite, str):
-            self.genepool = np.load(elite).tolist()
-        elif elite is not None:
-            self.genepool = elite
+        if pop is None:
+            self.generation = 1
+            self.elites = []
+            self.networks = [NetworkPlayer(gen=1) for _ in range(NETS_PER_POP)]
         else:
-            self.genepool = []
+            if isinstance(pop, str):
+                with open(pop, 'rb') as f:
+                    pop = pickle.load(f)
+            self.generation = pop.generation + 1
+            prev_networks = pop.get_sorted_networks(include_elites=True)
+            self.elites = prev_networks[:NUM_ELITE]
+            self.networks = self._spawn_children(prev_networks)
+        self.similarity = self._determine_similarity()
 
-        if parents is not None:
-            moms, dads = self._tournament(parents)
-            for i in range(8):
-                self.genepool.append(NetworkPlayer(gen, moms[i], dads[i]))
-        else:
-            current = len(self.genepool)
-            for i in range(10 - current):
-                self.genepool.append(NetworkPlayer(gen))
-
-    @staticmethod
-    def _tournament(parents):
-        """Tournament selection to generate pairs of parents.
-
-        The network with the highest score is selected to be a parent with probability p, then second highest p*(p-1),
-        third highest p*(p-1)**2, etc.
+    def _spawn_children(self, parents):
+        """Generate a list of child networks from a list of parents.
 
         Parameters
         ----------
-        parents : List[Net]
+        parents : List[NetworkPlayer]
             Networks from which the population will be spawned.
 
         Returns
         -------
-        moms : List[Net]
-            A list of 8 networks.
-        dads : List[Net]
-            A list of 8 networks.
+        List[NetworkPlayer]
+            The networks for the current population.
         """
-        moms = []
-        dads = []
-        while len(moms) < 8:
-            m1, m2, d1, d2 = np.random.choice(parents, 4)
-            if m1.get_avg_score() > m2.get_avg_score():
-                moms.append(m1)
-            else:
-                moms.append(m2)
-            if d1.get_avg_score() > d2.get_avg_score():
-                dads.append(d1)
-            else:
-                dads.append(d2)
-        return moms, dads
+        parents = [np.random.choice(parents, 2, replace=False) for _ in range(NETS_PER_POP - NUM_ELITE)]
+        return [NetworkPlayer(gen=self.generation, mom=p[0], dad=p[1]) for p in parents]
 
-    def play_games(self, games=50):
+    def _determine_similarity(self):
+        """Determine the mean similarity between all pairs of networks in the population.
+
+        Returns
+        -------
+        float
+            The mean similarity for the population as a number between 0 and 1.
+        """
+        networks = self.networks + self.elites
+        similarity = []
+        for i, n1 in enumerate(networks):
+            for n2 in networks[i+1:]:
+                similarity.append(n1.calculate_similarity(n2))
+        return np.mean(similarity)
+
+    def randomize_population(self):
+        """Randomize the non-elite networks without changing the total number and recalculate the similarity."""
+        self.networks = [NetworkPlayer() for _ in self.networks]
+        self.similarity = self._determine_similarity()
+
+    def play_games(self, games, include_elites, progress_bar=True, thresh=0):
         """Get each network in the population to play a certain number of games.
 
         Parameters
         ----------
         games : int
             The number of games each network should play.
+        include_elites : bool
+            Whether or not to make the elites play as well.
+        progress_bar : bool
+            Whether or not to display a tqdm progress bar.
+        thresh : float
+            Only networks with an average score above this threshold will play games.
         """
-        for n in self.genepool:
+        networks = copy(self.networks)
+        if include_elites:
+            networks += self.elites
+        networks = [n for n in networks if not n.scores or n.get_avg_score() > thresh]
+        if progress_bar:
+            iterator = tqdm(networks)
+        else:
+            iterator = networks
+        for n in iterator:
             n.play_multiple_games(games)
 
-    def sort_by_score(self):
-        """Sort the genepool in descending order by each network's average score."""
-        self.genepool.sort(key=lambda n: n.get_avg_score(), reverse=True)
+    def get_sorted_networks(self, include_elites):
+        """Sort the population's networks in descending order by each network's average score.
 
+        Parameters
+        ----------
+        include_elites : bool
+            Whether or not to include the elites in the result.
 
-def train_population(final_gen, initial_gen=0, elite=None):
-    """Run a micro-genetic algorithm to evolve a good neural network.
+        Returns
+        -------
+        networks : List[NetworkPlayer]
+            The networks sorted by average score.
+        """
+        networks = copy(self.networks)
+        if include_elites:
+            networks += self.elites
+        networks.sort(key=lambda n: n.get_avg_score(), reverse=True)
+        return networks
 
-    Each population defaults to 10 networks and plays 50 games. The top 2 from each generation are copied to the next
-    one, but all have the opportunity to reproduce. Every 10 generations, all but the top 2 are killed and 8 new
-    networks are randomly generated to add to the 2 that survived.
+    def save(self, path):
+        """Save the population to a file.
 
-    Parameters
-    ----------
-    final_gen : int
-        The total number of generations played is final_gen - initial_gen.  Recommended to be 10*n for positive integer
-        values of n.
-    initial_gen : int
-        The total number of generations played is final_gen - initial_gen
-    elite : List[int]
-        List of networks to copy directly into the new population.
-
-    Returns
-    -------
-    top_scores : List[float]
-        List of floats. The top average score in each generation.
-    best_net : NetworkPlayer
-        The trained networks that performs best.
-    """
-    parents = None
-    top_scores = []
-
-    for gen in range(initial_gen+1, final_gen+1):
-        pop = Population(gen, elite, parents)
-
-        print('Playing games for generation', gen, 'of', final_gen)
-        pop.play_games()
-        pop.sort_by_score()
-        if not pop.generation % 20 and pop.generation != 0:
-            name = 'Generation' + str(pop.generation)
-            np.save(name, pop.genepool[:2])
-
-        top_scores.append(pop.genepool[0].get_avg_score())
-
-        elite = pop.genepool[:2]
-
-        if not gen % 10:
-            parents = None
-        else:
-            parents = pop.genepool
-
-        print('Best network\'s generation =', pop.genepool[0].generation)
-        print('Best network\'s score =', np.rint(pop.genepool[0].get_avg_score()))
-        print('Best network\'s highest tile =', np.rint(pop.genepool[0].get_avg_highest_tile()), '\n')
-
-    plt.figure()
-    plt.title('log_2(Highest Score)')
-    plt.plot(np.log2(top_scores))
-
-    filename = "BestNetGen" + str(final_gen)
-    np.save(filename, pop.genepool[0])
-
-    return top_scores, pop.genepool[0]
+        Parameters
+        ----------
+        path : str
+            The save path.
+        """
+        with open(path, 'wb') as f:
+            pickle.dump(self, f)
