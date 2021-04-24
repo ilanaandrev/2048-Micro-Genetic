@@ -30,7 +30,10 @@ class Player(ABC):
         float
             The geometric mean of self.scores.
         """
-        return np.exp(np.mean(np.log(self.scores)))
+        if not self.scores:
+            return np.nan
+        else:
+            return np.exp(np.mean(np.log(self.scores)))
 
     def get_avg_highest_tile(self):
         """Calculate the player's (geometric) average highest tile.
@@ -40,7 +43,10 @@ class Player(ABC):
         float
             The geometric mean of self.highest_tiles.
         """
-        return np.exp(np.mean(np.log(self.highest_tiles)))
+        if not self.highest_tiles:
+            return np.nan
+        else:
+            return np.exp(np.mean(np.log(self.highest_tiles)))
 
     def get_num_games_played(self):
         """Get the number of games the player has played.
@@ -78,7 +84,7 @@ class Player(ABC):
         self.scores.append(game.score)
         self.highest_tiles.append(game.highest_tile)
 
-    def play_multiple_games(self, num_games, progress_bar=False):
+    def play_multiple_games(self, num_games, progress_bar=True):
         """Play multiple games without graphics, with an optional tqdm progress bar.
 
         Parameters
