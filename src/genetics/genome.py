@@ -2,8 +2,8 @@ from game import DIRECTIONS
 import numpy as np
 
 
-HIDDEN_LAYER_SIZE = 1024
-NUM_HIDDEN_LAYERS = 1
+HIDDEN_LAYER_SIZE = 128
+NUM_HIDDEN_LAYERS = 2
 assert NUM_HIDDEN_LAYERS > 0
 
 INPUT_WEIGHT_SHAPE = (16, HIDDEN_LAYER_SIZE)
@@ -99,15 +99,16 @@ class Genome:
         ndarray
             The four direction actions sorted in the order of the network's evaluation.
         """
+        do_activation = np.sign
         x = 3 * (board.reshape(16) / 7 - 1)  # Max tile log-value in 2048 is 14. Normalize to [-3, 3].
-        h = np.sign(x @ self.input_weights)
+        h = do_activation(x @ self.input_weights)
         for w in self.hidden_weights:
-            h = np.sign(h @ w)
+            h = do_activation(h @ w)
         y = h @ self.output_weights  # No non-linearity needed. We only care about order.
         return np.asarray(DIRECTIONS)[y.argsort()[::-1]]
 
     def calculate_similarity(self, genome):
-        """Calculate the similarity (percent of equal weights) between this genome and another.
+        """Calculate the similarity (percentage of equal weights) between this genome and another.
 
         Parameters
         ----------
