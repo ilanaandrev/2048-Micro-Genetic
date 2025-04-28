@@ -24,7 +24,7 @@ class Game:
 
     def __init__(self):
         """Sets up the game state with two random tiles."""
-        self.board = np.zeros((4, 4), dtype=np.int)
+        self.board = np.zeros((4, 4), dtype=int)
         self._add_tile()
         self._add_tile()
         self.score = 0

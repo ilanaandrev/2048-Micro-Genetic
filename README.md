@@ -59,7 +59,7 @@ Before we discuss this image, let's also perform a more quantitative examination
 
 Highest Tile at Game Over | Random  | Corner   | Greedy   | Network
 :------------------------:|:-------:|:--------:|:---------|:-------
-16                        | 0.3%    |          |          | 
+16                        | 0.3%    |          |          |a 
 32                        | 7.0%    | 0.2%     | 0.2%     | 0.3%
 64                        | 38.0%   | 7.3%     | 4.6%     | 4.6%
 128                       | 46.8%   | 40.9%    | 34.9%    | 22.1%

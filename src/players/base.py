@@ -93,6 +93,7 @@ class Player(ABC):
             print(f'Game Over. Final score was {game.score}. Highest tile was {game.highest_tile}.')
         self.scores.append(game.score)
         self.highest_tiles.append(game.highest_tile)
+        return game
 
     def play_multiple_games(self, num_games, progress_bar=True):
         """Play multiple games without graphics, with an optional tqdm progress bar.
