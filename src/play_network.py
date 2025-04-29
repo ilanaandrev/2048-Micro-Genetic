@@ -12,38 +12,43 @@ with open(path_to_model, 'rb') as f:
 
 player = NetworkPlayer(network)
 
-num_games = 1000
+#play for one hour
+max_total_time = 3600  # 1 hr is 3600 sec
+start_time = time.time()
+
 total_max_tile = 0
 total_time = 0
 highest_tile = 0
+games_played = 0
 
 max_tiles = []
 times = []
 
-for i in range(num_games):
-    start_time = time.time()
+while time.time() - start_time < max_total_time:
+    game_start = time.time()
 
     game = player.play_game(display=None)
     max_tile = game.highest_tile
 
-    end_time = time.time()
-    elapsed_time = end_time - start_time
+    game_end = time.time()
+    elapsed_game_time = game_end - game_start
 
-    print(f"Game {i+1}: Max Tile = {max_tile}, Time = {elapsed_time:.4f} seconds")
-
+    print(f"Game {games_played+1}: Max Tile = {max_tile}, Time = {elapsed_game_time:.4f} seconds")
+    
     total_max_tile += max_tile
-    total_time += elapsed_time
+    total_time += elapsed_game_time
+    games_played += 1
 
     max_tiles.append(max_tile)
-    times.append(elapsed_time)
+    times.append(elapsed_game_time)
 
-    if max_tile > highest_tile: 
+    if max_tile > highest_tile:
         highest_tile = max_tile
 
-# printing
+# After the loop ends (1 hour passed)
 print("\n========================")
-print(f"Played {num_games} games")
-print(f"Average Tile: {total_max_tile / num_games:.2f}")
-print(f"Average Time per Game: {total_time / num_games:.4f} seconds")
+print(f"Played {games_played} games in 1 hour")
+print(f"Average Max Tile: {total_max_tile / games_played:.2f}")
+print(f"Average Time per Game: {total_time / games_played:.4f} seconds")
 print(f"Highest Tile Achieved: {highest_tile}")
 print("========================")
